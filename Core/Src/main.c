@@ -20,6 +20,7 @@
 #include "main.h"
 #include "dma.h"
 #include "i2c.h"
+#include "rtc.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -52,12 +53,10 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-
 /* USER CODE BEGIN PFP */
 
 void ENCODER1_update(void);
 void OLED_update_time(void);
-void OLED_update_cursor(void);
 
 /* USER CODE END PFP */
 
@@ -113,9 +112,14 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_TIM1_Init();
+  MX_RTC_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   OLED_init();
+
+  RTC_TimeTypeDef sTime;
+  RTC_DateTypeDef sDate;
 
   /* USER CODE END 2 */
 
@@ -128,6 +132,11 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  ENCODER1_update();
 	  OLED_update_time();
+
+//	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+//	  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);  // Musi być po GetTime()
+
+//	  printf("Czas: %02d:%02d:%02d\n", sTime.Hours, sTime.Minutes, sTime.Seconds);
   }
   /* USER CODE END 3 */
 }
@@ -149,9 +158,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -207,8 +217,6 @@ void OLED_update_time(void) {
 
     if(cursor_cnt > 70) cursor_cnt = 0;
     else cursor_cnt++;
-
-    printf("%s\n", time_str);
 
 	sprintf(time_str, "%s:%s", time_hour_str, time_minute_str);
 	OLED_print(time_str, 0, OLED_ROW_5, 2);

@@ -58,7 +58,11 @@ extern enum SelectionMode selection_mode;
 extern DMA_HandleTypeDef hdma_i2c1_tx;
 extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN EV */
+
+
+volatile buzzer_cnt = 0;
 
 /* USER CODE END EV */
 
@@ -243,6 +247,20 @@ void TIM1_UP_TIM10_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM3 global interrupt.
+  */
+void TIM3_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM3_IRQn 0 */
+
+  /* USER CODE END TIM3_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim3);
+  /* USER CODE BEGIN TIM3_IRQn 1 */
+
+  /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
   * @brief This function handles I2C1 event interrupt.
   */
 void I2C1_EV_IRQHandler(void)
@@ -262,6 +280,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (htim->Instance == TIM1)
     {
         HAL_GPIO_TogglePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin);
+    }
+}
+
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
+    if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
+
+    	if(buzzer_cnt < 5) {
+    		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 10000);
+
+    	} else {
+    		__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
+    	}
+
+    	buzzer_cnt = buzzer_cnt <= 6 ? buzzer_cnt + 1 : 0;
     }
 }
 
