@@ -18,10 +18,15 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
+#include "i2c.h"
+#include "tim.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "oled.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,12 +52,32 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+
 /* USER CODE BEGIN PFP */
+
+void ENCODER1_update(void);
+void OLED_update_time(void);
+void OLED_update_cursor(void);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+int __io_putchar(int ch) {
+	ITM_SendChar(ch);
+	return ch;
+}
+
+int8_t counter = 0, selected_hour = 0, selected_minutes = 0;
+uint16_t cursor_cnt = 0;
+
+char time_str[32];
+char time_hour_str[16], time_minute_str[16];
+
+extern TIM_HandleTypeDef htim1;
+
+enum SelectionMode selection_mode = SELECTION_HOUR;
 
 /* USER CODE END 0 */
 
@@ -84,7 +109,13 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_I2C1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+
+  OLED_init();
 
   /* USER CODE END 2 */
 
@@ -95,6 +126,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  ENCODER1_update();
+	  OLED_update_time();
   }
   /* USER CODE END 3 */
 }
@@ -141,6 +174,73 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void OLED_update_time(void) {
+
+    OLED_print("Ustaw godzin\313", 0, OLED_ROW_1, 1);
+
+    if(selection_mode != SELECTION_NONE) {
+
+    	if(selection_mode == SELECTION_HOUR) {
+
+    		if(cursor_cnt < 60) {
+    			sprintf(time_hour_str, "%s%d", selected_hour < 10 ? "0" : "", selected_hour);
+    		} else {
+    			sprintf(time_hour_str, "%s", "  ");
+    		}
+    		sprintf(time_minute_str, "%s%d", selected_minutes < 10 ? "0" : "", selected_minutes);
+
+    	} else {
+
+    		if(cursor_cnt < 60) {
+        		sprintf(time_minute_str, "%s%d", selected_minutes < 10 ? "0" : "", selected_minutes);
+			} else {
+				sprintf(time_minute_str, "%s", "  ");
+			}
+    		sprintf(time_hour_str, "%s%d", selected_hour < 10 ? "0" : "", selected_hour);
+    	}
+
+    } else {
+		sprintf(time_hour_str, "%s%d", selected_hour < 10 ? "0" : "", selected_hour);
+		sprintf(time_minute_str, "%s%d", selected_minutes < 10 ? "0" : "", selected_minutes);
+    }
+
+    if(cursor_cnt > 70) cursor_cnt = 0;
+    else cursor_cnt++;
+
+    printf("%s\n", time_str);
+
+	sprintf(time_str, "%s:%s", time_hour_str, time_minute_str);
+	OLED_print(time_str, 0, OLED_ROW_5, 2);
+}
+
+
+void ENCODER1_update(void) {
+	static uint16_t last_cnt = 0;
+	int diff = htim1.Instance->CNT - last_cnt;
+
+	if(diff >= 4 || diff <= -4) {
+		diff /= 4;
+
+		switch(selection_mode) {
+			case SELECTION_HOUR:
+				selected_hour += (int8_t)diff;
+
+				if(selected_hour > 23) selected_hour = 0;
+				if (selected_hour < 0) selected_hour = 23;
+				break;
+			case SELECTION_MINUTE:
+				selected_minutes += (int8_t)diff;
+
+				if(selected_minutes > 59) selected_minutes = 0;
+				if (selected_minutes < 0) selected_minutes = 59;
+			default:
+				break;
+		}
+
+		last_cnt = htim1.Instance->CNT;
+	}
+}
 
 /* USER CODE END 4 */
 

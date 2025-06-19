@@ -1,0 +1,2 @@
+../Core/Src/oled.c:11:6:OLED_init	8	static
+../Core/Src/oled.c:16:6:OLED_print	40	static

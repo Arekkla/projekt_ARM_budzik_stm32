@@ -57,9 +57,32 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define ENC1_BUTTON_Pin GPIO_PIN_0
+#define ENC1_BUTTON_GPIO_Port GPIOC
+#define ENC1_BUTTON_EXTI_IRQn EXTI0_IRQn
+#define ENC1_CLK_Pin GPIO_PIN_9
+#define ENC1_CLK_GPIO_Port GPIOE
+#define ENC1_DATA_Pin GPIO_PIN_11
+#define ENC1_DATA_GPIO_Port GPIOE
+#define LED_GREEN_Pin GPIO_PIN_12
+#define LED_GREEN_GPIO_Port GPIOD
+#define LED_ORANGE_Pin GPIO_PIN_13
+#define LED_ORANGE_GPIO_Port GPIOD
+#define LED_RED_Pin GPIO_PIN_14
+#define LED_RED_GPIO_Port GPIOD
+#define LED_BLUE_Pin GPIO_PIN_15
+#define LED_BLUE_GPIO_Port GPIOD
+#define OLED_I2C_SCL_Pin GPIO_PIN_6
+#define OLED_I2C_SCL_GPIO_Port GPIOB
+#define OLED_I2C_SDA_Pin GPIO_PIN_7
+#define OLED_I2C_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+enum SelectionMode {
+	SELECTION_HOUR,
+	SELECTION_MINUTE,
+	SELECTION_NONE
+};
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
