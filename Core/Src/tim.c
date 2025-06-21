@@ -21,7 +21,7 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
-
+#include<stdbool.h>
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim1;
@@ -103,7 +103,7 @@ void MX_TIM3_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 10000;
+  sConfigOC.Pulse = 500;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -111,8 +111,6 @@ void MX_TIM3_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM3_Init 2 */
-
-  HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
@@ -244,5 +242,11 @@ void HAL_TIM_PWM_MspDeInit(TIM_HandleTypeDef* tim_pwmHandle)
 }
 
 /* USER CODE BEGIN 1 */
-
+void BUZZER_set_enable(bool enable) {
+	if(enable) {
+		HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_1);
+	} else {
+		HAL_TIM_PWM_Stop_IT(&htim3, TIM_CHANNEL_1);
+	}
+}
 /* USER CODE END 1 */

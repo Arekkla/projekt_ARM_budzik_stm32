@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "oled.h"
+#include "lcd_i2c.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -114,29 +115,40 @@ int main(void)
   MX_TIM1_Init();
   MX_RTC_Init();
   MX_TIM3_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
 
   OLED_init();
 
-  RTC_TimeTypeDef sTime;
-  RTC_DateTypeDef sDate;
+  lcd_init(&hi2c3);
+  lcd_put_cursor(0, 0);
+  lcd_send_string("Hello STM32!");
+  lcd_put_cursor(1, 0);
+  lcd_send_string("LCD 4x20 I2C");
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  RTC_TimeTypeDef sTime;
+	  RTC_DateTypeDef sDate;
+	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);  // Musi być po GetTime()
+	  printf("Czas: %02d:%02d:%02d\n", sTime.Hours, sTime.Minutes, sTime.Seconds);
+
+
+
+//	  LCD_Locate(0, 1);
+//	  LCD_String("Arkadiusz");
+
 	  ENCODER1_update();
 	  OLED_update_time();
-
-//	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-//	  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);  // Musi być po GetTime()
-
-//	  printf("Czas: %02d:%02d:%02d\n", sTime.Hours, sTime.Minutes, sTime.Seconds);
   }
   /* USER CODE END 3 */
 }

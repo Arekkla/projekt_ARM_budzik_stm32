@@ -57,9 +57,12 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ENC1_BUTTON_Pin GPIO_PIN_0
-#define ENC1_BUTTON_GPIO_Port GPIOC
-#define ENC1_BUTTON_EXTI_IRQn EXTI0_IRQn
+#define ENC1_BTN_Pin GPIO_PIN_1
+#define ENC1_BTN_GPIO_Port GPIOC
+#define ENC1_BTN_EXTI_IRQn EXTI1_IRQn
+#define USER_BTN_Pin GPIO_PIN_0
+#define USER_BTN_GPIO_Port GPIOA
+#define USER_BTN_EXTI_IRQn EXTI0_IRQn
 #define BUZZER_TIM3_PWM_Pin GPIO_PIN_6
 #define BUZZER_TIM3_PWM_GPIO_Port GPIOA
 #define ENC1_CLK_Pin GPIO_PIN_9
