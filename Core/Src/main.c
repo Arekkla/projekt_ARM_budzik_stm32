@@ -55,10 +55,6 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
-void ENCODER1_update(void);
-void OLED_update_time(void);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -78,6 +74,9 @@ char time_hour_str[16], time_minute_str[16];
 extern TIM_HandleTypeDef htim1;
 
 enum SelectionMode selection_mode = SELECTION_HOUR;
+struct AlarmInfo alarm_info = {0};
+
+bool is_update_lcd = false, is_update_oled = true;
 
 /* USER CODE END 0 */
 
@@ -89,7 +88,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+   alarm_info.enabled = false;
+   alarm_info.dismissed = false;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -116,15 +116,13 @@ int main(void)
   MX_RTC_Init();
   MX_TIM3_Init();
   MX_I2C3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   OLED_init();
+  LCD_init(&hi2c3);
 
-  lcd_init(&hi2c3);
-  lcd_put_cursor(0, 0);
-  lcd_send_string("Hello STM32!");
-  lcd_put_cursor(1, 0);
-  lcd_send_string("LCD 4x20 I2C");
+  HAL_TIM_OC_Start_IT(&htim4, TIM_CHANNEL_1);
 
   /* USER CODE END 2 */
 
@@ -136,19 +134,15 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  RTC_TimeTypeDef sTime;
-	  RTC_DateTypeDef sDate;
-	  HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	  HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);  // Musi być po GetTime()
-	  printf("Czas: %02d:%02d:%02d\n", sTime.Hours, sTime.Minutes, sTime.Seconds);
+	  if(is_update_lcd) {
+		  is_update_lcd = false;
+		  LCD_update();
+	  }
 
-
-
-//	  LCD_Locate(0, 1);
-//	  LCD_String("Arkadiusz");
-
-	  ENCODER1_update();
-	  OLED_update_time();
+	  if(is_update_oled) {
+		  ENC_ALARM_update();
+		  OLED_update_time();
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -205,37 +199,36 @@ void OLED_update_time(void) {
 
     	if(selection_mode == SELECTION_HOUR) {
 
-    		if(cursor_cnt < 60) {
-    			sprintf(time_hour_str, "%s%d", selected_hour < 10 ? "0" : "", selected_hour);
+    		if(cursor_cnt < 40) {
+    			sprintf(time_hour_str, "%02d", selected_hour);
     		} else {
     			sprintf(time_hour_str, "%s", "  ");
     		}
-    		sprintf(time_minute_str, "%s%d", selected_minutes < 10 ? "0" : "", selected_minutes);
+    		sprintf(time_minute_str, "%02d", selected_minutes);
 
     	} else {
 
-    		if(cursor_cnt < 60) {
-        		sprintf(time_minute_str, "%s%d", selected_minutes < 10 ? "0" : "", selected_minutes);
+    		if(cursor_cnt < 40) {
+        		sprintf(time_minute_str, "%02d", selected_minutes);
 			} else {
 				sprintf(time_minute_str, "%s", "  ");
 			}
-    		sprintf(time_hour_str, "%s%d", selected_hour < 10 ? "0" : "", selected_hour);
+    		sprintf(time_hour_str, "%02d", selected_hour);
     	}
 
     } else {
-		sprintf(time_hour_str, "%s%d", selected_hour < 10 ? "0" : "", selected_hour);
-		sprintf(time_minute_str, "%s%d", selected_minutes < 10 ? "0" : "", selected_minutes);
+		sprintf(time_hour_str, "%02d", selected_hour);
+		sprintf(time_minute_str, "%02d", selected_minutes);
     }
 
-    if(cursor_cnt > 70) cursor_cnt = 0;
-    else cursor_cnt++;
+	if(cursor_cnt > 50) cursor_cnt = 0;
+	else cursor_cnt++;
 
 	sprintf(time_str, "%s:%s", time_hour_str, time_minute_str);
 	OLED_print(time_str, 0, OLED_ROW_5, 2);
 }
 
-
-void ENCODER1_update(void) {
+void ENC_ALARM_update(void) {
 	static uint16_t last_cnt = 0;
 	int diff = htim1.Instance->CNT - last_cnt;
 
@@ -261,6 +254,57 @@ void ENCODER1_update(void) {
 		last_cnt = htim1.Instance->CNT;
 	}
 }
+
+void LCD_show_clock_screen() {
+	RTC_TimeTypeDef sTime;
+	RTC_DateTypeDef sDate;
+	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);  // Musi być po GetTime()
+
+	char buffer[64];
+	sprintf(buffer, "%02d:%02d:%02d", sTime.Hours, sTime.Minutes, sTime.Seconds);
+	LCD_put_cursor(0, 6);
+	LCD_send_string(buffer);
+
+	sprintf(buffer, "%02d.%02d.%d", sDate.Date, sDate.Month, 2000 + sDate.Year);
+	LCD_put_cursor(2, 5);
+	LCD_send_string(buffer);
+}
+
+void LCD_show_alarm_screen() {
+	LCD_put_cursor(2, 3);
+	LCD_send_string("     ALARM    ");
+	HAL_Delay(150);
+	LCD_put_cursor(2, 3);
+	LCD_send_string("   ! ALARM !  ");
+	HAL_Delay(150);
+	LCD_put_cursor(2, 3);
+	LCD_send_string("  !! ALARM !! ");
+	HAL_Delay(150);
+	LCD_put_cursor(2, 3);
+	LCD_send_string(" !!! ALARM !!!");
+	HAL_Delay(150);
+}
+
+void LCD_update(void) {
+	if(alarm_info.enabled) {
+		LCD_show_alarm_screen();
+	} else {
+		if(alarm_info.dismissed) {
+			LCD_clear();
+
+			LCD_put_cursor(2, 2);
+			LCD_send_string("ALARM DISMISSED!");
+			HAL_Delay(800);
+			LCD_clear();
+		}
+		alarm_info.dismissed = false;
+
+		LCD_show_clock_screen();
+	}
+	is_update_lcd = false;
+}
+
 
 /* USER CODE END 4 */
 

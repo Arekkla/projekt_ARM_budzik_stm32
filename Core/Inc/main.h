@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -53,13 +53,13 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void ENC_ALARM_update(void);
+void OLED_update_time(void);
+void LCD_update(void);
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ENC1_BTN_Pin GPIO_PIN_1
-#define ENC1_BTN_GPIO_Port GPIOC
-#define ENC1_BTN_EXTI_IRQn EXTI1_IRQn
 #define USER_BTN_Pin GPIO_PIN_0
 #define USER_BTN_GPIO_Port GPIOA
 #define USER_BTN_EXTI_IRQn EXTI0_IRQn
@@ -77,6 +77,9 @@ void Error_Handler(void);
 #define LED_RED_GPIO_Port GPIOD
 #define LED_BLUE_Pin GPIO_PIN_15
 #define LED_BLUE_GPIO_Port GPIOD
+#define ENC_BTN_Pin GPIO_PIN_1
+#define ENC_BTN_GPIO_Port GPIOD
+#define ENC_BTN_EXTI_IRQn EXTI1_IRQn
 #define OLED_I2C_SCL_Pin GPIO_PIN_6
 #define OLED_I2C_SCL_GPIO_Port GPIOB
 #define OLED_I2C_SDA_Pin GPIO_PIN_7
@@ -88,6 +91,12 @@ enum SelectionMode {
 	SELECTION_MINUTE,
 	SELECTION_NONE
 };
+
+struct AlarmInfo {
+	bool enabled;
+	bool dismissed;
+};
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

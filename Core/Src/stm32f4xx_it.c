@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +54,9 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 extern enum SelectionMode selection_mode;
+extern struct AlarmInfo alarm_info;
+
+extern bool is_update_lcd, is_update_oled;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -63,10 +67,12 @@ extern I2C_HandleTypeDef hi2c3;
 extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
 
 
 volatile uint8_t buzzer_cnt = 0;
+volatile uint32_t enc_alarm_selection_mode_tick = 0;
 
 /* USER CODE END EV */
 
@@ -230,7 +236,7 @@ void EXTI1_IRQHandler(void)
   /* USER CODE BEGIN EXTI1_IRQn 0 */
 
   /* USER CODE END EXTI1_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(ENC1_BTN_Pin);
+  HAL_GPIO_EXTI_IRQHandler(ENC_BTN_Pin);
   /* USER CODE BEGIN EXTI1_IRQn 1 */
 
   /* USER CODE END EXTI1_IRQn 1 */
@@ -265,6 +271,20 @@ void DMA1_Stream4_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM1 break interrupt and TIM9 global interrupt.
+  */
+void TIM1_BRK_TIM9_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_BRK_TIM9_IRQn 0 */
+
+  /* USER CODE END TIM1_BRK_TIM9_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_BRK_TIM9_IRQn 1 */
+
+  /* USER CODE END TIM1_BRK_TIM9_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
   */
 void TIM1_UP_TIM10_IRQHandler(void)
@@ -290,6 +310,20 @@ void TIM3_IRQHandler(void)
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**
@@ -335,14 +369,6 @@ void I2C3_EV_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Instance == TIM1)
-    {
-        HAL_GPIO_TogglePin(LED_ORANGE_GPIO_Port, LED_ORANGE_Pin);
-    }
-}
-
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
 
@@ -355,33 +381,47 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
 
     	buzzer_cnt = buzzer_cnt <= 6 ? buzzer_cnt + 1 : 0;
     }
+
+    if(htim->Instance == TIM4) {
+    	is_update_lcd = !is_update_lcd;
+    	is_update_oled = !is_update_oled;
+    }
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
-    if (pin == ENC1_BTN_Pin)
+    if (pin == ENC_BTN_Pin)
     {
-    	switch(selection_mode) {
-    		case SELECTION_NONE:
-    			selection_mode = SELECTION_HOUR;
-    			break;
-    		case SELECTION_HOUR:
-    			selection_mode = SELECTION_MINUTE;
-				break;
-    		case SELECTION_MINUTE:
-    			selection_mode = SELECTION_NONE;
-				break;
+    	if(HAL_GetTick() - enc_alarm_selection_mode_tick > 70) {
+    		enc_alarm_selection_mode_tick = HAL_GetTick();
+
+    		switch(selection_mode) {
+				case SELECTION_NONE:
+					selection_mode = SELECTION_HOUR;
+					break;
+				case SELECTION_HOUR:
+					selection_mode = SELECTION_MINUTE;
+					break;
+				case SELECTION_MINUTE:
+					selection_mode = SELECTION_NONE;
+					break;
+			}
+			printf("Mode: %d \n", selection_mode);
     	}
     }
-    if(pin == USER_BTN_Pin) {
-    	BUZZER_set_enable(false);
+    else if(pin == USER_BTN_Pin) {
+    	if(alarm_info.enabled) {
+    		alarm_info.enabled = false;
+			alarm_info.dismissed = true;
+			BUZZER_set_enable(false);
+
+    	}
     }
 }
 
-void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc_)
 {
-	HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin);
-
+	alarm_info.enabled = true;
 	BUZZER_set_enable(true);
 }
 /* USER CODE END 1 */

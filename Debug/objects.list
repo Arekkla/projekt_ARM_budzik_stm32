@@ -1,5 +1,4 @@
 "./Core/Src/GFX.o"
-"./Core/Src/LCD_HD44780_I2C.o"
 "./Core/Src/SSD1306.o"
 "./Core/Src/delays.o"
 "./Core/Src/dma.o"
