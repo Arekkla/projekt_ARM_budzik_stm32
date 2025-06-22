@@ -21,7 +21,7 @@
 #include "rtc.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "main.h"
 /* USER CODE END 0 */
 
 RTC_HandleTypeDef hrtc;
@@ -158,5 +158,52 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+void RTC_update_clock(struct ClockConfig *config) {
+	__HAL_RCC_BACKUPRESET_FORCE();
+	__HAL_RCC_BACKUPRESET_RELEASE();
+
+	RTC_TimeTypeDef sTime = {0};
+	RTC_DateTypeDef sDate = {0};
+
+	sTime.Hours = config->hours;
+	sTime.Minutes = config->minutes;
+	sTime.Seconds = config->seconds;
+	sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+	if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	sDate.WeekDay = RTC_WEEKDAY_FRIDAY;
+	sDate.Month = config->month;
+	sDate.Date = config->date;
+	sDate.Year = config->year;
+
+	if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+
+//void {
+//	  /** Enable the Alarm A
+//	  */
+//	  sAlarm.AlarmTime.Hours = 0x19;
+//	  sAlarm.AlarmTime.Minutes = 0x0;
+//	  sAlarm.AlarmTime.Seconds = 0x10;
+//	  sAlarm.AlarmTime.SubSeconds = 0x0;
+//	  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+//	  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+//	  sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+//	  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+//	  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+//	  sAlarm.AlarmDateWeekDay = 0x20;
+//	  sAlarm.Alarm = RTC_ALARM_A;
+//	  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
+//	  {
+//	    Error_Handler();
+//	  }
+//}
 
 /* USER CODE END 1 */

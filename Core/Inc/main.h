@@ -54,6 +54,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void ENC_ALARM_update(void);
+void ENC_CLOCK_update(void);
 void OLED_update_time(void);
 void LCD_update(void);
 
@@ -63,6 +64,10 @@ void LCD_update(void);
 #define USER_BTN_Pin GPIO_PIN_0
 #define USER_BTN_GPIO_Port GPIOA
 #define USER_BTN_EXTI_IRQn EXTI0_IRQn
+#define ENC2_CLK_Pin GPIO_PIN_1
+#define ENC2_CLK_GPIO_Port GPIOA
+#define ENC2_DATA_Pin GPIO_PIN_5
+#define ENC2_DATA_GPIO_Port GPIOA
 #define BUZZER_TIM3_PWM_Pin GPIO_PIN_6
 #define BUZZER_TIM3_PWM_GPIO_Port GPIOA
 #define ENC1_CLK_Pin GPIO_PIN_9
@@ -80,6 +85,9 @@ void LCD_update(void);
 #define ENC_BTN_Pin GPIO_PIN_1
 #define ENC_BTN_GPIO_Port GPIOD
 #define ENC_BTN_EXTI_IRQn EXTI1_IRQn
+#define ENC2_BTN_Pin GPIO_PIN_2
+#define ENC2_BTN_GPIO_Port GPIOD
+#define ENC2_BTN_EXTI_IRQn EXTI2_IRQn
 #define OLED_I2C_SCL_Pin GPIO_PIN_6
 #define OLED_I2C_SCL_GPIO_Port GPIOB
 #define OLED_I2C_SDA_Pin GPIO_PIN_7
@@ -89,13 +97,38 @@ void LCD_update(void);
 enum SelectionMode {
 	SELECTION_HOUR,
 	SELECTION_MINUTE,
-	SELECTION_NONE
+	SELECTION_SECONDS,
+	SELECTION_NONE,
+	SELECTION_DATE,
+	SELECTION_MONTH,
+	SELECTION_YEAR
 };
 
-struct AlarmInfo {
+enum ButtonAction {
+	USER_BTN_EDIT_CLOCK,
+	USER_BTN_SAVE_CLOCK,
+	USER_BTN_EDIT_ALARM,
+	USER_BTN_SAVE_ALARM,
+	USER_BTN_DISMISS_ALARM
+};
+
+struct AlarmConfig {
 	bool enabled;
 	bool dismissed;
+	uint8_t hours;
+	uint8_t minutes;
 };
+
+struct ClockConfig {
+	uint8_t hours;
+	uint8_t minutes;
+	uint8_t seconds;
+	uint8_t date;
+	uint8_t month;
+	uint16_t year;
+};
+
+void RTC_update_clock(struct ClockConfig *config);
 
 /* USER CODE END Private defines */
 

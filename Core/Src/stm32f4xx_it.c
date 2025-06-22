@@ -54,9 +54,12 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 extern enum SelectionMode selection_mode;
-extern struct AlarmInfo alarm_info;
+extern enum SelectionMode clock_selection_mode;
+extern struct AlarmConfig alarm_config;
+extern struct ClockConfig clock_config;
 
-extern bool is_update_lcd, is_update_oled;
+extern bool is_update_lcd, is_update_oled, is_clock_edit, is_lcd_cls;
+extern enum ButtonAction user_button_action;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -71,8 +74,11 @@ extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
 
 
-volatile uint8_t buzzer_cnt = 0;
-volatile uint32_t enc_alarm_selection_mode_tick = 0;
+volatile uint8_t buzzer_cnt = 0, alarm_index = 0, clock_index = 0;
+volatile uint32_t enc_alarm_selection_mode_tick = 0, enc_clock_selection_mode_tick = 0;
+
+enum SelectionMode selection_modes[] = {SELECTION_HOUR, SELECTION_MINUTE, SELECTION_SECONDS, SELECTION_DATE, SELECTION_MONTH, SELECTION_YEAR};
+
 
 /* USER CODE END EV */
 
@@ -243,6 +249,20 @@ void EXTI1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles EXTI line2 interrupt.
+  */
+void EXTI2_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI2_IRQn 0 */
+
+  /* USER CODE END EXTI2_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(ENC2_BTN_Pin);
+  /* USER CODE BEGIN EXTI2_IRQn 1 */
+
+  /* USER CODE END EXTI2_IRQn 1 */
+}
+
+/**
   * @brief This function handles DMA1 stream1 global interrupt.
   */
 void DMA1_Stream1_IRQHandler(void)
@@ -395,33 +415,82 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
     	if(HAL_GetTick() - enc_alarm_selection_mode_tick > 70) {
     		enc_alarm_selection_mode_tick = HAL_GetTick();
 
-    		switch(selection_mode) {
-				case SELECTION_NONE:
-					selection_mode = SELECTION_HOUR;
-					break;
-				case SELECTION_HOUR:
-					selection_mode = SELECTION_MINUTE;
-					break;
-				case SELECTION_MINUTE:
-					selection_mode = SELECTION_NONE;
-					break;
-			}
+    		alarm_index = alarm_index < 1 ? alarm_index + 1 : 0;
+    		selection_mode = selection_modes[alarm_index];
+
 			printf("Mode: %d \n", selection_mode);
     	}
     }
+    else if (pin == ENC2_BTN_Pin)
+    {
+    	if(HAL_GetTick() - enc_clock_selection_mode_tick > 70) {
+    		enc_clock_selection_mode_tick = HAL_GetTick();
+
+    		clock_index = clock_index < 5 ? clock_index + 1 : 0;
+    		clock_selection_mode = selection_modes[clock_index];
+
+//    		is_lcd_cls = true;
+
+			printf("Mode: %d \n", clock_selection_mode);
+    	}
+    }
     else if(pin == USER_BTN_Pin) {
-    	if(alarm_info.enabled) {
-    		alarm_info.enabled = false;
-			alarm_info.dismissed = true;
-			BUZZER_set_enable(false);
+
+    	switch(user_button_action) {
+
+    		case USER_BTN_DISMISS_ALARM:
+				user_button_action = USER_BTN_EDIT_CLOCK;
+        		alarm_config.enabled = false;
+    			alarm_config.dismissed = true;
+    			BUZZER_set_enable(false);
+    			break;
+
+    		case USER_BTN_EDIT_ALARM:
+    			user_button_action = USER_BTN_SAVE_ALARM;
+    			break;
+
+    		case USER_BTN_SAVE_ALARM:
+    			user_button_action = USER_BTN_EDIT_ALARM;
+    			break;
+
+    		case USER_BTN_EDIT_CLOCK:
+    			user_button_action = USER_BTN_SAVE_CLOCK;
+    			is_lcd_cls = true;
+				is_clock_edit = true;
+    			break;
+
+      		case USER_BTN_SAVE_CLOCK:
+				user_button_action = USER_BTN_EDIT_CLOCK;
+				is_lcd_cls = true;
+				is_clock_edit = false;
+				RTC_update_clock(&clock_config);
+
+				break;
 
     	}
+
+    	//    	if(alarm_config.enabled) {
+//    		alarm_config.enabled = false;
+//			alarm_config.dismissed = true;
+//			BUZZER_set_enable(false);
+//
+//    	} else {
+//
+//    		if(!is_clock_edit) {
+//        		is_lcd_cls = true;
+//    			is_clock_edit = true;
+//			} else {
+//    			is_clock_edit = false;
+//			}
+//
+//    	}
     }
 }
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc_)
 {
-	alarm_info.enabled = true;
+	alarm_config.enabled = true;
+	user_button_action = USER_BTN_DISMISS_ALARM;
 	BUZZER_set_enable(true);
 }
 /* USER CODE END 1 */

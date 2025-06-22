@@ -48,6 +48,17 @@ void LCD_send_string(char *str) {
     }
 }
 
+void LCD_clear_row(uint8_t row) {
+	if(row > LCD_ROWS) {
+		row = LCD_ROWS;
+	}
+
+	for(uint8_t i = 0; i < LCD_COLS; i++) {
+		LCD_put_cursor(row, i);
+		LCD_send_string(" ");
+	}
+}
+
 void LCD_init(I2C_HandleTypeDef *hi2c) {
     lcd_i2c = hi2c;
     HAL_Delay(50);

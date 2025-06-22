@@ -65,7 +65,7 @@ int __io_putchar(int ch) {
 	return ch;
 }
 
-int8_t counter = 0, selected_hour = 0, selected_minutes = 0;
+int8_t counter = 0;
 uint16_t cursor_cnt = 0;
 
 char time_str[32];
@@ -73,10 +73,15 @@ char time_hour_str[16], time_minute_str[16];
 
 extern TIM_HandleTypeDef htim1;
 
-enum SelectionMode selection_mode = SELECTION_HOUR;
-struct AlarmInfo alarm_info = {0};
+enum SelectionMode selection_mode = SELECTION_NONE;
+enum SelectionMode clock_selection_mode = SELECTION_NONE;
 
-bool is_update_lcd = false, is_update_oled = true;
+enum ButtonAction user_button_action = USER_BTN_EDIT_CLOCK;
+
+struct AlarmConfig alarm_config = {0};
+struct ClockConfig clock_config = {0};
+
+bool is_update_lcd = false, is_update_oled = true, is_clock_edit = false, is_lcd_cls = false;
 
 /* USER CODE END 0 */
 
@@ -88,8 +93,14 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-   alarm_info.enabled = false;
-   alarm_info.dismissed = false;
+   alarm_config.enabled = false;
+   alarm_config.dismissed = false;
+   clock_config.hours = 0;
+   clock_config.minutes = 0;
+   clock_config.seconds = 0;
+   clock_config.date = 1;
+   clock_config.month = 1;
+   clock_config.year = 25;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -117,6 +128,7 @@ int main(void)
   MX_TIM3_Init();
   MX_I2C3_Init();
   MX_TIM4_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   OLED_init();
@@ -143,6 +155,8 @@ int main(void)
 		  ENC_ALARM_update();
 		  OLED_update_time();
 	  }
+
+	  ENC_CLOCK_update();
   }
   /* USER CODE END 3 */
 }
@@ -200,25 +214,25 @@ void OLED_update_time(void) {
     	if(selection_mode == SELECTION_HOUR) {
 
     		if(cursor_cnt < 40) {
-    			sprintf(time_hour_str, "%02d", selected_hour);
+    			sprintf(time_hour_str, "%02d", alarm_config.hours);
     		} else {
     			sprintf(time_hour_str, "%s", "  ");
     		}
-    		sprintf(time_minute_str, "%02d", selected_minutes);
+    		sprintf(time_minute_str, "%02d", alarm_config.minutes);
 
     	} else {
 
     		if(cursor_cnt < 40) {
-        		sprintf(time_minute_str, "%02d", selected_minutes);
+        		sprintf(time_minute_str, "%02d", alarm_config.minutes);
 			} else {
 				sprintf(time_minute_str, "%s", "  ");
 			}
-    		sprintf(time_hour_str, "%02d", selected_hour);
+    		sprintf(time_hour_str, "%02d", alarm_config.hours);
     	}
 
     } else {
-		sprintf(time_hour_str, "%02d", selected_hour);
-		sprintf(time_minute_str, "%02d", selected_minutes);
+		sprintf(time_hour_str, "%02d", alarm_config.hours);
+		sprintf(time_minute_str, "%02d", alarm_config.minutes);
     }
 
 	if(cursor_cnt > 50) cursor_cnt = 0;
@@ -237,21 +251,79 @@ void ENC_ALARM_update(void) {
 
 		switch(selection_mode) {
 			case SELECTION_HOUR:
-				selected_hour += (int8_t)diff;
+				alarm_config.hours += (int8_t)diff;
 
-				if(selected_hour > 23) selected_hour = 0;
-				if (selected_hour < 0) selected_hour = 23;
+				if(alarm_config.hours > 23) alarm_config.hours = 0;
+				if (alarm_config.hours < 0) alarm_config.hours = 23;
 				break;
 			case SELECTION_MINUTE:
-				selected_minutes += (int8_t)diff;
+				alarm_config.minutes += (int8_t)diff;
 
-				if(selected_minutes > 59) selected_minutes = 0;
-				if (selected_minutes < 0) selected_minutes = 59;
+				if(alarm_config.minutes > 59) alarm_config.minutes = 0;
+				if (alarm_config.minutes < 0) alarm_config.minutes = 59;
 			default:
 				break;
 		}
 
 		last_cnt = htim1.Instance->CNT;
+	}
+}
+
+void ENC_CLOCK_update(void) {
+	static uint16_t last_cnt_clock = 0;
+	int diff = htim2.Instance->CNT - last_cnt_clock;
+
+	if(diff >= 4 || diff <= -4) {
+		diff /= 4;
+
+		printf("Clock: %d \n", diff);
+
+		switch(clock_selection_mode) {
+			case SELECTION_HOUR:
+				clock_config.hours += (int8_t)diff;
+
+				if(clock_config.hours > 23) clock_config.hours = 0;
+				if (clock_config.hours < 0) clock_config.hours = 23;
+				break;
+
+			case SELECTION_MINUTE:
+				clock_config.minutes += (int8_t)diff;
+
+				if(clock_config.minutes > 59) clock_config.minutes = 0;
+				if (clock_config.minutes < 0) clock_config.minutes = 59;
+				break;
+
+			case SELECTION_SECONDS:
+				clock_config.seconds += (int8_t)diff;
+
+				if(clock_config.seconds > 59) clock_config.seconds = 0;
+				if (clock_config.seconds < 0) clock_config.seconds = 59;
+				break;
+
+			case SELECTION_DATE:
+				clock_config.date += (int8_t)diff;
+
+				if(clock_config.date > 31) clock_config.date = 1;
+				if (clock_config.date < 0) clock_config.date = 31;
+				break;
+
+			case SELECTION_MONTH:
+				clock_config.month += (int8_t)diff;
+
+				if(clock_config.month > 12) clock_config.month = 1;
+				if (clock_config.month < 0) clock_config.month = 12;
+				break;
+
+			case SELECTION_YEAR:
+				clock_config.year += (int8_t)diff;
+
+				if(clock_config.year > 30) clock_config.year = 25;
+				if (clock_config.year < 25) clock_config.year = 30;
+			default:
+				break;
+		}
+
+		last_cnt_clock = htim2.Instance->CNT;
 	}
 }
 
@@ -271,6 +343,65 @@ void LCD_show_clock_screen() {
 	LCD_send_string(buffer);
 }
 
+void LCD_show_edit_clock_screen() {
+	char buffer[64];
+
+	LCD_put_cursor(0, 0);
+	LCD_send_string("Godzina");
+	LCD_put_cursor(0, 10);
+	LCD_send_string("Data");
+	LCD_put_cursor(3, 0);
+	LCD_send_string("Zapisz - User Button");
+
+	sprintf(buffer, "%02d:%02d:%02d", clock_config.hours, clock_config.minutes, clock_config.seconds);
+	LCD_put_cursor(1, 0);
+	LCD_send_string(buffer);
+
+	sprintf(buffer, "%02d.%02d.%d", clock_config.date, clock_config.month, 2000 + clock_config.year);
+	LCD_put_cursor(1, 10);
+	LCD_send_string(buffer);
+
+	switch(clock_selection_mode) {
+		case SELECTION_HOUR:
+			LCD_clear_row(2);
+			LCD_put_cursor(2, 0);
+			LCD_send_string("^^");
+			break;
+
+		case SELECTION_MINUTE:
+			LCD_clear_row(2);
+			LCD_put_cursor(2, 3);
+			LCD_send_string("^^");;
+			break;
+
+		case SELECTION_SECONDS:
+			LCD_clear_row(2);
+			LCD_put_cursor(2, 6);
+			LCD_send_string("^^");
+			break;
+
+		case SELECTION_DATE:
+			LCD_clear_row(2);
+			LCD_put_cursor(2, 10);
+			LCD_send_string("^^");
+			break;
+
+		case SELECTION_MONTH:
+			LCD_clear_row(2);
+			LCD_put_cursor(2, 13);
+			LCD_send_string("^^");
+			break;
+
+		case SELECTION_YEAR:
+			LCD_clear_row(2);
+			LCD_put_cursor(2, 18);
+			LCD_send_string("^^");
+
+		default:
+			break;
+	}
+}
+
 void LCD_show_alarm_screen() {
 	LCD_put_cursor(2, 3);
 	LCD_send_string("     ALARM    ");
@@ -287,20 +418,28 @@ void LCD_show_alarm_screen() {
 }
 
 void LCD_update(void) {
-	if(alarm_info.enabled) {
+	if(alarm_config.enabled) {
 		LCD_show_alarm_screen();
 	} else {
-		if(alarm_info.dismissed) {
+		if(alarm_config.dismissed) {
 			LCD_clear();
 
 			LCD_put_cursor(2, 2);
-			LCD_send_string("ALARM DISMISSED!");
+			LCD_send_string("ALARM ODRZUCONY!");
 			HAL_Delay(800);
 			LCD_clear();
 		}
-		alarm_info.dismissed = false;
+		alarm_config.dismissed = false;
 
-		LCD_show_clock_screen();
+		if(is_clock_edit) {
+			if(is_lcd_cls) {
+				LCD_clear();
+				is_lcd_cls = false;
+			}
+			LCD_show_edit_clock_screen();
+		} else {
+			LCD_show_clock_screen();
+		}
 	}
 	is_update_lcd = false;
 }
