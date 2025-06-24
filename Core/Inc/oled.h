@@ -24,3 +24,4 @@
 
 void OLED_init(void);
 void OLED_print(char *str, uint16_t x, uint16_t y, uint8_t size);
+void OLED_clear(void);

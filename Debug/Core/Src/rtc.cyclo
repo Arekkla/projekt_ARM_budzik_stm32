@@ -1,4 +1,5 @@
-../Core/Src/rtc.c:30:6:MX_RTC_Init	5
+../Core/Src/rtc.c:30:6:MX_RTC_Init	4
 ../Core/Src/rtc.c:110:6:HAL_RTC_MspInit	3
 ../Core/Src/rtc.c:141:6:HAL_RTC_MspDeInit	2
-../Core/Src/rtc.c:162:6:RTC_update_clock	3
+../Core/Src/rtc.c:162:6:RTC_update_alarm	2
+../Core/Src/rtc.c:182:6:RTC_update_clock	3

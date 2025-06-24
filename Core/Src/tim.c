@@ -224,7 +224,7 @@ void HAL_TIM_Encoder_MspInit(TIM_HandleTypeDef* tim_encoderHandle)
     PE9     ------> TIM1_CH1
     PE11     ------> TIM1_CH2
     */
-    GPIO_InitStruct.Pin = ENC1_CLK_Pin|ENC1_DATA_Pin;
+    GPIO_InitStruct.Pin = ENC_ALARM_CLK_Pin|ENC_ALARM_DATAE11_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -253,7 +253,7 @@ void HAL_TIM_Encoder_MspInit(TIM_HandleTypeDef* tim_encoderHandle)
     PA1     ------> TIM2_CH2
     PA5     ------> TIM2_CH1
     */
-    GPIO_InitStruct.Pin = ENC2_CLK_Pin|ENC2_DATA_Pin;
+    GPIO_InitStruct.Pin = ENC_CLOCK_CLK_Pin|ENC_ALARM_DATA_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -348,7 +348,7 @@ void HAL_TIM_Encoder_MspDeInit(TIM_HandleTypeDef* tim_encoderHandle)
     PE9     ------> TIM1_CH1
     PE11     ------> TIM1_CH2
     */
-    HAL_GPIO_DeInit(GPIOE, ENC1_CLK_Pin|ENC1_DATA_Pin);
+    HAL_GPIO_DeInit(GPIOE, ENC_ALARM_CLK_Pin|ENC_ALARM_DATAE11_Pin);
 
     /* TIM1 interrupt Deinit */
     HAL_NVIC_DisableIRQ(TIM1_BRK_TIM9_IRQn);
@@ -369,7 +369,7 @@ void HAL_TIM_Encoder_MspDeInit(TIM_HandleTypeDef* tim_encoderHandle)
     PA1     ------> TIM2_CH2
     PA5     ------> TIM2_CH1
     */
-    HAL_GPIO_DeInit(GPIOA, ENC2_CLK_Pin|ENC2_DATA_Pin);
+    HAL_GPIO_DeInit(GPIOA, ENC_CLOCK_CLK_Pin|ENC_ALARM_DATA_Pin);
 
   /* USER CODE BEGIN TIM2_MspDeInit 1 */
 

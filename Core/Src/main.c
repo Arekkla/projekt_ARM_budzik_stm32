@@ -65,6 +65,10 @@ int __io_putchar(int ch) {
 	return ch;
 }
 
+uint8_t to_bcd(uint8_t dec) {
+    return ((dec / 10) << 4) | (dec % 10);
+}
+
 int8_t counter = 0;
 uint16_t cursor_cnt = 0;
 
@@ -73,15 +77,15 @@ char time_hour_str[16], time_minute_str[16];
 
 extern TIM_HandleTypeDef htim1;
 
-enum SelectionMode selection_mode = SELECTION_NONE;
-enum SelectionMode clock_selection_mode = SELECTION_NONE;
+SelectionMode_TypeDef alarm_selection_mode = SELECTION_HOUR;
+SelectionMode_TypeDef clock_selection_mode = SELECTION_HOUR;
 
-enum ButtonAction user_button_action = USER_BTN_EDIT_CLOCK;
+State_TypeDef current_state = STATE_EDIT_CLOCK;
 
-struct AlarmConfig alarm_config = {0};
-struct ClockConfig clock_config = {0};
+AlarmConfig_TypeDef alarm_config = {0};
+ClockConfig_TypeDef clock_config = {0};
 
-bool is_update_lcd = false, is_update_oled = true, is_clock_edit = false, is_lcd_cls = false;
+bool is_update_lcd = false, is_lcd_cls = false, is_oled_cls = false;
 
 /* USER CODE END 0 */
 
@@ -146,16 +150,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if(is_update_lcd) {
-		  is_update_lcd = false;
-		  LCD_update();
-	  }
-
-	  if(is_update_oled) {
-		  ENC_ALARM_update();
-		  OLED_update_time();
-	  }
-
+	  LCD_update();
+	  ENC_ALARM_update();
+	  OLED_update();
 	  ENC_CLOCK_update();
   }
   /* USER CODE END 3 */
@@ -205,13 +202,12 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-void OLED_update_time(void) {
+void OLED_show_edit_alarm_screen(void) {
+    OLED_print("Godzina alarmu", 0, OLED_ROW_1, 1);
 
-    OLED_print("Ustaw godzin\313", 0, OLED_ROW_1, 1);
+	if(alarm_selection_mode != SELECTION_NONE) {
 
-    if(selection_mode != SELECTION_NONE) {
-
-    	if(selection_mode == SELECTION_HOUR) {
+    	if(alarm_selection_mode == SELECTION_HOUR) {
 
     		if(cursor_cnt < 40) {
     			sprintf(time_hour_str, "%02d", alarm_config.hours);
@@ -242,6 +238,37 @@ void OLED_update_time(void) {
 	OLED_print(time_str, 0, OLED_ROW_5, 2);
 }
 
+void OLED_show_alarm_countdown_screen() {
+	char buffer[32];
+	RTC_TimeTypeDef sTime;
+	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+
+	if(alarm_config.hours - sTime.Hours >= 0 && alarm_config.minutes - sTime.Minutes >= 0) {
+		OLED_print("Alarm zadzwoni za", 0, OLED_ROW_1, 1);
+
+		sprintf(buffer, "%d godz. %d min.", alarm_config.hours - sTime.Hours, alarm_config.minutes - sTime.Minutes);
+		OLED_print(buffer, 0, OLED_ROW_3, 1);
+	} else {
+		OLED_print("Alarm nie zosta\314", 0, OLED_ROW_3, 1);
+		OLED_print("ustawiony", 0, OLED_ROW_4, 1);
+	}
+}
+
+void OLED_update(void) {
+	if(is_oled_cls) {
+		SSD1306_display_clear();
+		SSD1306_display_repaint();
+		is_oled_cls = false;
+	}
+
+    if(current_state == STATE_EDIT_ALARM) {
+    	OLED_show_edit_alarm_screen();
+    }
+    else {
+        OLED_show_alarm_countdown_screen();
+    }
+}
+
 void ENC_ALARM_update(void) {
 	static uint16_t last_cnt = 0;
 	int diff = htim1.Instance->CNT - last_cnt;
@@ -249,7 +276,7 @@ void ENC_ALARM_update(void) {
 	if(diff >= 4 || diff <= -4) {
 		diff /= 4;
 
-		switch(selection_mode) {
+		switch(alarm_selection_mode) {
 			case SELECTION_HOUR:
 				alarm_config.hours += (int8_t)diff;
 
@@ -304,14 +331,14 @@ void ENC_CLOCK_update(void) {
 				clock_config.date += (int8_t)diff;
 
 				if(clock_config.date > 31) clock_config.date = 1;
-				if (clock_config.date < 0) clock_config.date = 31;
+				if (clock_config.date < 1) clock_config.date = 31;
 				break;
 
 			case SELECTION_MONTH:
 				clock_config.month += (int8_t)diff;
 
 				if(clock_config.month > 12) clock_config.month = 1;
-				if (clock_config.month < 0) clock_config.month = 12;
+				if (clock_config.month < 1) clock_config.month = 12;
 				break;
 
 			case SELECTION_YEAR:
@@ -331,7 +358,7 @@ void LCD_show_clock_screen() {
 	RTC_TimeTypeDef sTime;
 	RTC_DateTypeDef sDate;
 	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);  // Musi być po GetTime()
+	HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
 
 	char buffer[64];
 	sprintf(buffer, "%02d:%02d:%02d", sTime.Hours, sTime.Minutes, sTime.Seconds);
@@ -403,45 +430,42 @@ void LCD_show_edit_clock_screen() {
 }
 
 void LCD_show_alarm_screen() {
-	LCD_put_cursor(2, 3);
+	LCD_put_cursor(2, 2);
 	LCD_send_string("     ALARM    ");
 	HAL_Delay(150);
-	LCD_put_cursor(2, 3);
+	LCD_put_cursor(2, 2);
 	LCD_send_string("   ! ALARM !  ");
 	HAL_Delay(150);
-	LCD_put_cursor(2, 3);
+	LCD_put_cursor(2, 2);
 	LCD_send_string("  !! ALARM !! ");
 	HAL_Delay(150);
-	LCD_put_cursor(2, 3);
+	LCD_put_cursor(2, 2);
 	LCD_send_string(" !!! ALARM !!!");
 	HAL_Delay(150);
 }
 
 void LCD_update(void) {
-	if(alarm_config.enabled) {
+	if(is_lcd_cls) {
+		is_lcd_cls = false;
+		LCD_clear();
+	}
+
+	if(current_state == STATE_ALARM) {
 		LCD_show_alarm_screen();
+	}
+	else if(current_state == STATE_EDIT_CLOCK) {
+		LCD_show_edit_clock_screen();
 	} else {
 		if(alarm_config.dismissed) {
+			alarm_config.dismissed = false;
 			LCD_clear();
-
 			LCD_put_cursor(2, 2);
 			LCD_send_string("ALARM ODRZUCONY!");
 			HAL_Delay(800);
 			LCD_clear();
 		}
-		alarm_config.dismissed = false;
-
-		if(is_clock_edit) {
-			if(is_lcd_cls) {
-				LCD_clear();
-				is_lcd_cls = false;
-			}
-			LCD_show_edit_clock_screen();
-		} else {
-			LCD_show_clock_screen();
-		}
+		LCD_show_clock_screen();
 	}
-	is_update_lcd = false;
 }
 
 
